@@ -1,10 +1,10 @@
 /**
   Phonegap DatePicker Plugin
   https://github.com/sectore/phonegap3-ios-datepicker-plugin
-  
+
   Copyright (c) Greg Allen 2011
   Additional refactoring by Sam de Freyssinet
-  
+
   Rewrite by Jens Krause (www.websector.de)
 
   MIT Licensed
@@ -30,15 +30,15 @@ DatePicker.prototype.show = function(options, cb) {
     };
 
     var formatDate = function(date){
-      date = date.getFullYear() 
-            + "-" 
-            + padDate(date.getMonth()+1) 
-            + "-" 
-            + padDate(date.getDate()) 
-            + "T" 
-            + padDate(date.getHours()) 
-            + ":" 
-            + padDate(date.getMinutes()) 
+      date = date.getFullYear()
+            + "-"
+            + padDate(date.getMonth()+1)
+            + "-"
+            + padDate(date.getDate())
+            + "T"
+            + padDate(date.getHours())
+            + ":"
+            + padDate(date.getMinutes())
             + ":00Z";
 
       return date
@@ -64,9 +64,11 @@ DatePicker.prototype.show = function(options, cb) {
         minDate: '',
         maxDate: '',
         doneButtonLabel: 'Done',
-        doneButtonColor: '#0000FF',
+        doneButtonColor: '#5da9e0',
         cancelButtonLabel: 'Cancel',
-        cancelButtonColor: '#000000',
+        cancelButtonColor: '#474752',
+        nowButtonLabel: 'Now',
+        nowButtonColor: '#5da9e0',
         x: '0',
         y: '0'
     };
@@ -77,19 +79,30 @@ DatePicker.prototype.show = function(options, cb) {
     }
     this._callback = cb;
 
-    exec(null, 
-      null, 
-      "DatePicker", 
+    exec(null,
+      null,
+      "DatePicker",
       "show",
       [defaults]
     );
 };
 
 DatePicker.prototype._dateSelected = function(date) {
-    var d = new Date(parseFloat(date) * 1000);
-    if (this._callback)
-        this._callback(d);
-}
+  var d;
+
+  if(date === 'now') {
+    d = new Date();
+  }
+  else if(date === 'cancel') {
+    d = null;
+  }
+  else {
+    d = new Date(parseFloat(date) * 1000);
+  }
+    if (this._callback) {
+      this._callback(d);
+    }
+};
 
 var datePicker = new DatePicker();
 module.exports = datePicker;

@@ -1,14 +1,14 @@
 /*
- 
+
  Phonegap DatePicker Plugin for using Cordova 3 and iOS 7
  https://github.com/sectore/phonegap3-ios-datepicker-plugin
- 
+
  Based on a previous plugin version by Greg Allen and Sam de Freyssinet.
- 
+
  Rewrite by Jens Krause (www.websector.de)
- 
+
  MIT Licensed
- 
+
  */
 
 #import "DatePicker.h"
@@ -23,6 +23,7 @@
 @property (nonatomic) IBOutlet UIView* datePickerComponentsContainer;
 @property (nonatomic) IBOutlet UIButton *cancelButton;
 @property (nonatomic) IBOutlet UIButton *doneButton;
+@property (nonatomic) IBOutlet UIButton *nowButton;
 @property (nonatomic) IBOutlet UIDatePicker *datePicker;
 
 @end
@@ -47,16 +48,17 @@
   if(!self.datePickerContainer){
     [[NSBundle mainBundle] loadNibNamed:@"DatePicker" owner:self options:nil];
   }
-  
+
   [self updateDatePicker:options];
   [self updateCancelButton:options];
   [self updateDoneButton:options];
-  
+  [self updateNowButton:options];
+
   UIDeviceOrientation deviceOrientation = [UIDevice currentDevice].orientation;
-  
+
   CGFloat width;
   CGFloat height;
-  
+
   if(UIInterfaceOrientationIsLandscape(deviceOrientation)){
     width = self.webView.superview.frame.size.height;
     height= self.webView.superview.frame.size.width;
@@ -66,7 +68,7 @@
   }
 
   self.datePickerContainer.frame = CGRectMake(0, 0, width, height);
-  
+
   [self.webView.superview addSubview: self.datePickerContainer];
   [self.datePickerContainer layoutIfNeeded];
 
@@ -74,10 +76,10 @@
   self.datePickerComponentsContainer.frame = CGRectOffset(frame,
                                                           0,
                                                           frame.size.height );
-  
-  
+
+
   self.datePickerContainer.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0];
-  
+
   [UIView animateWithDuration:ANIMATION_DURATION
                         delay:0
                       options:UIViewAnimationOptionCurveEaseOut
@@ -86,9 +88,9 @@
     self.datePickerContainer.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.4];
 
   } completion:^(BOOL finished) {
-    
+
   }];
-  
+
   return true;
 }
 
@@ -102,14 +104,14 @@
     CGRect frame = CGRectOffset(self.datePickerComponentsContainer.frame,
                                 0,
                                 self.datePickerComponentsContainer.frame.size.height);
-    
+
     [UIView animateWithDuration:ANIMATION_DURATION
                           delay:0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
                        self.datePickerComponentsContainer.frame = frame;
                        self.datePickerContainer.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0];
-                       
+
                      } completion:^(BOOL finished) {
                        [self.datePickerContainer removeFromSuperview];
                      }];
@@ -121,26 +123,39 @@
 
 #pragma mark - Actions
 - (IBAction)doneAction:(id)sender {
-  [self jsDateSelected];
+  [self jsDateSelected:@""];
   [self hide];
 }
-  
+
+- (IBAction)nowAction:(id)sender {
+    [self jsDateSelected:@"now"];
+    [self hide];
+}
+
 - (IBAction)cancelAction:(id)sender {
+  [self jsDateSelected:@"cancel"];
   [self hide];
 }
 
 
 - (void)dateChangedAction:(id)sender {
-  [self jsDateSelected];
+  [self jsDateSelected:@""];
 }
 
 #pragma mark - JS API
 
-- (void)jsDateSelected {
-  NSTimeInterval seconds = [self.datePicker.date timeIntervalSince1970];
-  NSString* jsCallback = [NSString stringWithFormat:@"datePicker._dateSelected(\"%f\");", seconds];
-  //NSLog(jsCallback);
-  [super writeJavascript:jsCallback];
+- (void)jsDateSelected:(NSString*) mode {
+    NSString* jsCallback;
+
+    if([mode length] != 0) {
+        jsCallback = [NSString stringWithFormat:@"datePicker._dateSelected(\"%@\");", mode];
+    }
+    else {
+        NSTimeInterval seconds = [self.datePicker.date timeIntervalSince1970];
+        jsCallback = [NSString stringWithFormat:@"datePicker._dateSelected(\"%f\");", seconds];
+    }
+
+    [super writeJavascript:jsCallback];
 }
 
 
@@ -153,11 +168,11 @@
 #pragma mark - Factory methods
 
 - (UIPopoverController *)createPopover:(NSMutableDictionary *)options {
-  
+
   CGFloat pickerViewWidth = 320.0f;
   CGFloat pickerViewHeight = 216.0f;
   UIView *datePickerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pickerViewWidth, pickerViewHeight)];
-  
+
   CGRect frame = CGRectMake(0, 0, 0, 0);
   if(!self.datePicker){
     self.datePicker = [self createDatePicker:options frame:frame];
@@ -165,19 +180,19 @@
   }
   [self updateDatePicker:options];
   [datePickerView addSubview:self.datePicker];
-  
+
   UIViewController *datePickerViewController = [[UIViewController alloc]init];
   datePickerViewController.view = datePickerView;
-  
+
   UIPopoverController *popover = [[UIPopoverController alloc] initWithContentViewController:datePickerViewController];
   popover.delegate = self;
   [popover setPopoverContentSize:CGSizeMake(pickerViewWidth, pickerViewHeight) animated:NO];
-  
+
   CGFloat x = [[options objectForKey:@"x"] intValue];
   CGFloat y = [[options objectForKey:@"y"] intValue];
   CGRect anchor = CGRectMake(x, y, 1, 1);
   [popover presentPopoverFromRect:anchor inView:self.webView.superview  permittedArrowDirections:UIPopoverArrowDirectionAny animated:YES];
-  
+
   return popover;
 }
 
@@ -196,25 +211,27 @@
   BOOL allowFutureDates = ([[options objectForKey:@"allowFutureDates"] intValue] == 0) ? NO : YES;
   NSString *minDateString = [options objectForKey:@"minDate"];
   NSString *maxDateString = [options objectForKey:@"maxDate"];
-  
+
   if (!allowOldDates) {
     self.datePicker.minimumDate = [NSDate date];
   }
+
+  self.datePicker.minuteInterval = 5;
   
   if(minDateString && minDateString.length > 0){
     self.datePicker.minimumDate = [formatter dateFromString:minDateString];
   }
-  
+
   if (!allowFutureDates) {
     self.datePicker.maximumDate = [NSDate date];
   }
-  
+
   if(maxDateString && maxDateString.length > 0){
     self.datePicker.maximumDate = [formatter dateFromString:maxDateString];
   }
-  
+
   self.datePicker.date = [formatter dateFromString:dateString];
-  
+
   if ([mode isEqualToString:@"date"]) {
     self.datePicker.datePickerMode = UIDatePickerModeDate;
   }
@@ -229,7 +246,7 @@
   NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
   [dateFormatter setTimeZone:timezone];
   [dateFormatter setDateFormat:format];
-  
+
   return dateFormatter;
 }
 
@@ -237,20 +254,30 @@
 
   NSString *label = [options objectForKey:@"cancelButtonLabel"];
   [self.cancelButton setTitle:label forState:UIControlStateNormal];
-  
+
   NSString *tintColorHex = [options objectForKey:@"cancelButtonColor"];
   self.cancelButton.tintColor = [self colorFromHexString: tintColorHex];
-  
+
 }
 
 - (void)updateDoneButton:(NSMutableDictionary *)options {
-  
+
   NSString *label = [options objectForKey:@"doneButtonLabel"];
   [self.doneButton setTitle:label forState:UIControlStateNormal];
-  
+
   NSString *tintColorHex = [options objectForKey:@"doneButtonColor"];
   [self.doneButton setTintColor: [self colorFromHexString: tintColorHex]];
-  
+
+}
+
+- (void)updateNowButton:(NSMutableDictionary *)options {
+
+    NSString *label = [options objectForKey:@"nowButtonLabel"];
+    [self.nowButton setTitle:label forState:UIControlStateNormal];
+
+    NSString *tintColorHex = [options objectForKey:@"nowButtonColor"];
+    [self.nowButton setTintColor: [self colorFromHexString: tintColorHex]];
+
 }
 
 
@@ -258,7 +285,7 @@
 
 /*! Converts a hex string into UIColor
  It based on http://stackoverflow.com/questions/1560081/how-can-i-create-a-uicolor-from-a-hex-string
- 
+
   @param hexString The hex string which has to be converted
  */
 - (UIColor *)colorFromHexString:(NSString *)hexString {
