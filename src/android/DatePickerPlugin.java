@@ -29,6 +29,15 @@ import android.widget.DatePicker;
 import android.widget.DatePicker.OnDateChangedListener;
 import android.widget.TimePicker;
 
+import android.app.Activity;
+import android.content.res.Resources;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+
 import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -56,7 +65,7 @@ public class DatePickerPlugin extends CordovaPlugin {
 
 	public synchronized void show(final JSONArray data, final CallbackContext callbackContext) {
 		final DatePickerPlugin datePickerPlugin = this;
-		final Context currentCtx = cordova.getActivity();
+		final Activity currentCtx = cordova.getActivity();
 		final Calendar c = Calendar.getInstance();
 		final Runnable runnable;
 
@@ -209,8 +218,50 @@ public class DatePickerPlugin extends CordovaPlugin {
 			};
 
 		} else {
-			Log.d(pluginName, "Unknown action. Only 'date' or 'time' are valid actions");
-			return;
+			Resources activityRes = currentCtx.getResources();
+	    String pkgName = currentCtx.getPackageName();
+
+	    LayoutInflater inflater = (LayoutInflater)
+	            currentCtx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+	    View layout = inflater.inflate(activityRes.getIdentifier("datetime", "layout", pkgName),
+	            (ViewGroup) currentCtx.findViewById(activityRes.getIdentifier("linearLayout2", "id", pkgName)));
+
+	    final AlertDialog.Builder builder = new AlertDialog.Builder(currentCtx);
+	    builder.setView(layout);
+
+	    final AlertDialog dialog = builder.create();
+
+	    Button nowButton =(Button)layout.findViewById(activityRes.getIdentifier("nowButton", "id", pkgName));
+	    Button okButton = (Button)layout.findViewById(activityRes.getIdentifier("okButton", "id", pkgName));
+	    Button cancelButton = (Button) layout.findViewById(activityRes.getIdentifier("cancelButton", "id", pkgName));
+
+	    DatePicker datePicker = (DatePicker) layout.findViewById(activityRes.getIdentifier("datePicker", "id", pkgName));
+	    TimePicker timePicker = (TimePicker) layout.findViewById(activityRes.getIdentifier("timePicker", "id", pkgName));
+
+	    nowButton.setOnClickListener(new View.OnClickListener() {
+	        @Override
+	        public void onClick(View v) {
+	            dialog.dismiss();
+	        }
+	    });
+
+	    okButton.setOnClickListener(new View.OnClickListener() {
+	        @Override
+	        public void onClick(View v) {
+	            dialog.dismiss();
+	        }
+	    });
+
+	    cancelButton.setOnClickListener(new View.OnClickListener() {
+	        @Override
+	        public void onClick(View v) {
+	            dialog.dismiss();
+	        }
+	    });
+
+	    timePicker.setIs24HourView(true);
+	    return dialog.show();
 		}
 
 		cordova.getActivity().runOnUiThread(runnable);
@@ -249,13 +300,13 @@ public class DatePickerPlugin extends CordovaPlugin {
 		 * time picker.
 		 */
 		@Override
-		public void onTimeSet(final TimePicker view, final int hourOfDay, final int minute) {			
+		public void onTimeSet(final TimePicker view, final int hourOfDay, final int minute) {
 			Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
 			calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
 			calendar.set(Calendar.MINUTE, minute);
 
-			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); 
-			sdf.setTimeZone(TimeZone.getTimeZone("GMT"));  
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+			sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 			String toReturn = sdf.format(calendar.getTime());
 
 			callbackContext.success(toReturn);
