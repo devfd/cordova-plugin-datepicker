@@ -14,8 +14,8 @@
 
     <!-- android -->
     <platform name="android">
-        <hook type="after_plugin_add" src="hooks/after_plugin_add/010_install_layout.js" />
-        <hook type="after_plugin_install" src="hooks/after_plugin_add/010_install_layout.js" />
+        <hook type="after_plugin_install" src="hooks/after_plugin_install.js" />
+        <hook type="before_plugin_uninstall" src="hooks/before_plugin_uninstall.js" />
 
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="DatePickerPlugin">
@@ -28,7 +28,6 @@
         </js-module>
 
         <source-file src="src/android/DatePickerPlugin.java" target-dir="src/com/plugin/datepicker" />
-        <!-- <source-file src="src/android/datetime.xml" target-dir="res/layout" /> -->
     </platform>
 
     <!-- ios -->
