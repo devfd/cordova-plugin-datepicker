@@ -162,12 +162,13 @@
 #pragma mark - UIPopoverControllerDelegate methods
 
 - (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController {
-
+  [self jsDateSelected:@"cancel"];
 }
 
 #pragma mark - Factory methods
 
 - (UIPopoverController *)createPopover:(NSMutableDictionary *)options {
+
   CGFloat pickerViewWidth = 400.0f;
   CGFloat pickerViewHeight = 300.0f;
   UIView *datePickerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pickerViewWidth, pickerViewHeight)];
@@ -185,7 +186,7 @@
                action:@selector(nowAction:)
      forControlEvents:UIControlEventTouchUpInside];
   [self updateNowButton:options];
-
+    
   [datePickerView addSubview:self.nowButton];
   [datePickerView addSubview:self.datePicker];
 
@@ -225,7 +226,7 @@
   }
 
   self.datePicker.minuteInterval = 5;
-
+  
   if(minDateString && minDateString.length > 0){
     self.datePicker.minimumDate = [formatter dateFromString:minDateString];
   }
