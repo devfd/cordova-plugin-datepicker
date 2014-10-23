@@ -218,50 +218,55 @@ public class DatePickerPlugin extends CordovaPlugin {
 			};
 
 		} else {
-			Resources activityRes = currentCtx.getResources();
-	    String pkgName = currentCtx.getPackageName();
+			runnable = new Runnable() {
+				@Override
+				public void run() {
+					Resources activityRes = currentCtx.getResources();
+			    String pkgName = currentCtx.getPackageName();
 
-	    LayoutInflater inflater = (LayoutInflater)
-	            currentCtx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			    LayoutInflater inflater = (LayoutInflater)
+			            currentCtx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
-	    View layout = inflater.inflate(activityRes.getIdentifier("datetime", "layout", pkgName),
-	            (ViewGroup) currentCtx.findViewById(activityRes.getIdentifier("linearLayout2", "id", pkgName)));
+			    View layout = inflater.inflate(activityRes.getIdentifier("datetime", "layout", pkgName),
+			            (ViewGroup) currentCtx.findViewById(activityRes.getIdentifier("linearLayout2", "id", pkgName)));
 
-	    final AlertDialog.Builder builder = new AlertDialog.Builder(currentCtx);
-	    builder.setView(layout);
+			    final AlertDialog.Builder builder = new AlertDialog.Builder(currentCtx);
+			    builder.setView(layout);
 
-	    final AlertDialog dialog = builder.create();
+			    final AlertDialog dialog = builder.create();
 
-	    Button nowButton =(Button)layout.findViewById(activityRes.getIdentifier("nowButton", "id", pkgName));
-	    Button okButton = (Button)layout.findViewById(activityRes.getIdentifier("okButton", "id", pkgName));
-	    Button cancelButton = (Button) layout.findViewById(activityRes.getIdentifier("cancelButton", "id", pkgName));
+			    Button nowButton =(Button)layout.findViewById(activityRes.getIdentifier("nowButton", "id", pkgName));
+			    Button okButton = (Button)layout.findViewById(activityRes.getIdentifier("okButton", "id", pkgName));
+			    Button cancelButton = (Button) layout.findViewById(activityRes.getIdentifier("cancelButton", "id", pkgName));
 
-	    DatePicker datePicker = (DatePicker) layout.findViewById(activityRes.getIdentifier("datePicker", "id", pkgName));
-	    TimePicker timePicker = (TimePicker) layout.findViewById(activityRes.getIdentifier("timePicker", "id", pkgName));
+			    DatePicker datePicker = (DatePicker) layout.findViewById(activityRes.getIdentifier("datePicker", "id", pkgName));
+			    TimePicker timePicker = (TimePicker) layout.findViewById(activityRes.getIdentifier("timePicker", "id", pkgName));
 
-	    nowButton.setOnClickListener(new View.OnClickListener() {
-	        @Override
-	        public void onClick(View v) {
-	            dialog.dismiss();
-	        }
-	    });
+			    nowButton.setOnClickListener(new View.OnClickListener() {
+			        @Override
+			        public void onClick(View v) {
+			            dialog.dismiss();
+			        }
+			    });
 
-	    okButton.setOnClickListener(new View.OnClickListener() {
-	        @Override
-	        public void onClick(View v) {
-	            dialog.dismiss();
-	        }
-	    });
+			    okButton.setOnClickListener(new View.OnClickListener() {
+			        @Override
+			        public void onClick(View v) {
+			            dialog.dismiss();
+			        }
+			    });
 
-	    cancelButton.setOnClickListener(new View.OnClickListener() {
-	        @Override
-	        public void onClick(View v) {
-	            dialog.dismiss();
-	        }
-	    });
+			    cancelButton.setOnClickListener(new View.OnClickListener() {
+			        @Override
+			        public void onClick(View v) {
+			            dialog.dismiss();
+			        }
+			    });
 
-	    timePicker.setIs24HourView(true);
-	    return dialog.show();
+			    timePicker.setIs24HourView(true);
+			    dialog.show();
+				}
+			};
 		}
 
 		cordova.getActivity().runOnUiThread(runnable);
