@@ -168,17 +168,25 @@
 #pragma mark - Factory methods
 
 - (UIPopoverController *)createPopover:(NSMutableDictionary *)options {
-
-  CGFloat pickerViewWidth = 320.0f;
-  CGFloat pickerViewHeight = 216.0f;
+  CGFloat pickerViewWidth = 400.0f;
+  CGFloat pickerViewHeight = 300.0f;
   UIView *datePickerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, pickerViewWidth, pickerViewHeight)];
 
-  CGRect frame = CGRectMake(0, 0, 0, 0);
+  CGRect frame = CGRectMake(0, 40, pickerViewWidth, pickerViewHeight - 40);
   if(!self.datePicker){
     self.datePicker = [self createDatePicker:options frame:frame];
     [self.datePicker addTarget:self action:@selector(dateChangedAction:) forControlEvents:UIControlEventValueChanged];
   }
   [self updateDatePicker:options];
+
+  self.nowButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+  self.nowButton.frame = CGRectMake(0, 10, pickerViewWidth, 30.0);
+  [self.nowButton addTarget:self
+               action:@selector(nowAction:)
+     forControlEvents:UIControlEventTouchUpInside];
+  [self updateNowButton:options];
+
+  [datePickerView addSubview:self.nowButton];
   [datePickerView addSubview:self.datePicker];
 
   UIViewController *datePickerViewController = [[UIViewController alloc]init];
@@ -217,7 +225,7 @@
   }
 
   self.datePicker.minuteInterval = 5;
-  
+
   if(minDateString && minDateString.length > 0){
     self.datePicker.minimumDate = [formatter dateFromString:minDateString];
   }
