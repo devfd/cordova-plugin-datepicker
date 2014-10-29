@@ -14,14 +14,22 @@ function DatePicker() {
  * show - true to show the ad, false to hide the ad
  */
 DatePicker.prototype.show = function(options, cb) {
-  
+
 	if (options.date) {
-		options.date = (options.date.getMonth() + 1) + "/" + 
-					   (options.date.getDate()) + "/" + 
-					   (options.date.getFullYear()) + "/" + 
-					   (options.date.getHours()) + "/" + 
+		options.date = (options.date.getMonth() + 1) + "/" +
+					   (options.date.getDate()) + "/" +
+					   (options.date.getFullYear()) + "/" +
+					   (options.date.getHours()) + "/" +
 					   (options.date.getMinutes());
 	}
+
+  if(options.minDate) {
+    options.minDate = options.minDate.getTime();
+  }
+
+  if(options.maxDate) {
+    options.maxDate = options.maxDate.getTime();
+  }
 
 	var defaults = {
 		mode : 'date',
@@ -39,12 +47,25 @@ DatePicker.prototype.show = function(options, cb) {
 	//this._callback = cb;
 
 	var callback = function(message) {
-		cb(new Date(message));
-	}
-  
-	cordova.exec(callback, 
-		null, 
-		"DatePickerPlugin", 
+    console.log('GOT ' +  message);
+    var d;
+
+    if(message === 'now') {
+      d = new Date();
+    }
+    else if(message === 'cancel') {
+      d = null;
+    }
+    else {
+      d = new Date(parseFloat(message));
+    }
+
+		cb(d);
+	};
+
+	cordova.exec(callback,
+		null,
+		"DatePickerPlugin",
 		defaults.mode,
 		[defaults]
 	);

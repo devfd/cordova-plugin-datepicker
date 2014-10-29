@@ -46,11 +46,86 @@ import android.os.Build;
 
 @SuppressWarnings("deprecation")
 @SuppressLint("NewApi")
-public class DatePickerPlugin extends CordovaPlugin {
+public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedListener, TimePicker.OnTimeChangedListener {
 
 	private static final String ACTION_DATE = "date";
 	private static final String ACTION_TIME = "time";
 	private final String pluginName = "DatePickerPlugin";
+
+	private int pickedYear = -1;
+  private int pickedMonth = -1;
+  private int pickedDay = -1;
+  private int pickedHour = -1;
+  private int pickedMinute = -1;
+
+	private Date maxDate = null;
+	private Calendar maxDateCal = null;
+	private Date minDate = null;
+	private Calendar minDateCal = null;
+
+	private TimePicker timePickerView = null;
+	private DatePicker datePickerView = null;
+
+	private void pickersToMax() {
+		int pHour = this.maxDateCal.get(Calendar.HOUR_OF_DAY);
+		int pMinute = this.maxDateCal.get(Calendar.MINUTE);
+		int pDay = this.maxDateCal.get(Calendar.DAY_OF_MONTH);
+		int pYear = this.maxDateCal.get(Calendar.YEAR);
+		int pMonth = this.maxDateCal.get(Calendar.MONTH);
+
+		this.datePickerView.init(pYear, pMonth, pDay, this);
+		this.timePickerView.setOnTimeChangedListener(null);
+		this.timePickerView.setCurrentHour(pHour);
+		this.timePickerView.setCurrentMinute(pMinute);
+		this.timePickerView.setOnTimeChangedListener(this);
+
+		this.pickedYear = pYear;
+		this.pickedMonth = pMonth;
+		this.pickedDay = pDay;
+		this.pickedHour = pHour;
+		this.pickedMinute = pMinute;
+	}
+
+	private void pickersToMin() {
+		int pHour = this.minDateCal.get(Calendar.HOUR_OF_DAY);
+		int pMinute = this.minDateCal.get(Calendar.MINUTE);
+		int pDay = this.minDateCal.get(Calendar.DAY_OF_MONTH);
+		int pYear = this.minDateCal.get(Calendar.YEAR);
+		int pMonth = this.minDateCal.get(Calendar.MONTH);
+
+		this.datePickerView.init(pYear, pMonth, pDay, this);
+		this.timePickerView.setOnTimeChangedListener(null);
+		this.timePickerView.setCurrentHour(pHour);
+		this.timePickerView.setCurrentMinute(pMinute);
+		this.timePickerView.setOnTimeChangedListener(this);
+
+		this.pickedYear = pYear;
+		this.pickedMonth = pMonth;
+		this.pickedDay = pDay;
+		this.pickedHour = pHour;
+		this.pickedMinute = pMinute;
+	}
+
+	private Date pickedToDate() {
+		Calendar calDate = Calendar.getInstance(TimeZone.getDefault());
+		calDate.set(Calendar.HOUR_OF_DAY, this.pickedHour);
+		calDate.set(Calendar.MINUTE, this.pickedMinute);
+		calDate.set(Calendar.DAY_OF_MONTH, this.pickedDay);
+		calDate.set(Calendar.YEAR, this.pickedYear);
+		calDate.set(Calendar.MONTH, this.pickedMonth);
+
+		return calDate.getTime();
+	}
+
+	private void dateToPicked(Date date) {
+		Calendar cal = Calendar.getInstance(TimeZone.getDefault());
+		cal.setTime(date);
+		this.pickedHour = cal.get(Calendar.HOUR_OF_DAY);
+		this.pickedMinute = cal.get(Calendar.MINUTE);
+		this.pickedDay = cal.get(Calendar.DAY_OF_MONTH);
+		this.pickedYear = cal.get(Calendar.YEAR);
+		this.pickedMonth = cal.get(Calendar.MONTH);
+	}
 
 	@Override
 	public boolean execute(final String action, final JSONArray data, final CallbackContext callbackContext) {
@@ -62,6 +137,61 @@ public class DatePickerPlugin extends CordovaPlugin {
 
 		return result;
 	}
+
+	@Override
+  public void onDateChanged(android.widget.DatePicker datePicker, int y, int m, int d) {
+		Calendar calDate = Calendar.getInstance(TimeZone.getDefault());
+		calDate.set(Calendar.HOUR_OF_DAY, this.pickedHour);
+		calDate.set(Calendar.MINUTE, this.pickedMinute);
+		calDate.set(Calendar.DAY_OF_MONTH, d);
+		calDate.set(Calendar.YEAR, y);
+		calDate.set(Calendar.MONTH, m);
+
+		if(this.maxDate != null && calDate.getTime().after(this.maxDate)) {
+			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
+			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
+			this.pickersToMax();
+			return;
+		}
+
+		if(this.minDate != null && calDate.getTime().before(this.minDate)) {
+			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
+			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
+			this.pickersToMin();
+			return;
+		}
+
+    this.pickedYear = y;
+    this.pickedMonth = m;
+    this.pickedDay = d;
+  }
+
+  @Override
+  public void onTimeChanged(TimePicker timePicker, int h, int m) {
+		Calendar calDate = Calendar.getInstance(TimeZone.getDefault());
+		calDate.set(Calendar.HOUR_OF_DAY, h);
+		calDate.set(Calendar.MINUTE, m);
+		calDate.set(Calendar.DAY_OF_MONTH, this.pickedDay);
+		calDate.set(Calendar.YEAR, this.pickedYear);
+		calDate.set(Calendar.MONTH, this.pickedMonth);
+
+		if(this.maxDate != null && calDate.getTime().after(this.maxDate)) {
+			// timePicker.setCurrentHour(this.pickedHour);
+			// timePicker.setCurrentMinute(this.pickedMinute);
+			this.pickersToMax();
+			return;
+		}
+
+		if(this.minDate != null && calDate.getTime().before(this.minDate)) {
+			// timePicker.setCurrentHour(this.pickedHour);
+			// timePicker.setCurrentMinute(this.pickedMinute);
+			this.pickersToMin();
+			return;
+		}
+
+		this.pickedHour = h;
+		this.pickedMinute = m;
+  }
 
 	public synchronized void show(final JSONArray data, final CallbackContext callbackContext) {
 		final DatePickerPlugin datePickerPlugin = this;
@@ -100,8 +230,34 @@ public class DatePickerPlugin extends CordovaPlugin {
 		final int mHour = hour == -1 ? c.get(Calendar.HOUR_OF_DAY) : hour;
 		final int mMinutes = min == -1 ? c.get(Calendar.MINUTE) : min;
 
+		this.pickedDay = mDay;
+		this.pickedHour = mHour;
+		this.pickedMinute = mMinutes;
+		this.pickedMonth = mMonth;
+		this.pickedYear = mYear;
+
 		final long minDate = minDateLong;
 		final long maxDate = maxDateLong;
+
+		if(minDate != 0) {
+			this.minDate = new Date(minDate);
+			this.minDateCal = Calendar.getInstance(TimeZone.getDefault());
+			this.minDateCal.setTime(this.minDate);
+			Log.v("MIN DATE", this.minDate.toString());
+
+			if(this.pickedToDate().before(this.minDate)) {
+				this.dateToPicked(this.minDate);
+			}
+		}
+
+		if(maxDate != 0) {
+			this.maxDate = new Date(maxDate);
+			this.maxDateCal = Calendar.getInstance(TimeZone.getDefault());
+			this.maxDateCal.setTime(this.maxDate);
+			Log.v("MAX DATE", this.maxDate.toString());
+		}
+
+		Log.v("PICKED", "" + this.pickedHour + ":" + this.pickedMinute);
 
 		if (ACTION_TIME.equalsIgnoreCase(action)) {
 			runnable = new Runnable() {
@@ -234,36 +390,59 @@ public class DatePickerPlugin extends CordovaPlugin {
 			    builder.setView(layout);
 
 			    final AlertDialog dialog = builder.create();
+					dialog.setCancelable(true);
+          dialog.setCanceledOnTouchOutside(false);
 
 			    Button nowButton =(Button)layout.findViewById(activityRes.getIdentifier("nowButton", "id", pkgName));
 			    Button okButton = (Button)layout.findViewById(activityRes.getIdentifier("okButton", "id", pkgName));
 			    Button cancelButton = (Button) layout.findViewById(activityRes.getIdentifier("cancelButton", "id", pkgName));
 
-			    DatePicker datePicker = (DatePicker) layout.findViewById(activityRes.getIdentifier("datePicker", "id", pkgName));
-			    TimePicker timePicker = (TimePicker) layout.findViewById(activityRes.getIdentifier("timePicker", "id", pkgName));
+			    DatePicker datePick = (DatePicker) layout.findViewById(activityRes.getIdentifier("datePicker", "id", pkgName));
+					datePick.init(datePickerPlugin.pickedYear, datePickerPlugin.pickedMonth, datePickerPlugin.pickedDay, datePickerPlugin);
+					datePickerPlugin.datePickerView = datePick;
+
+			    TimePicker timePick = (TimePicker) layout.findViewById(activityRes.getIdentifier("timePicker", "id", pkgName));
+					datePickerPlugin.timePickerView = timePick;
+
+					timePick.setIs24HourView(true);
+					timePick.setCurrentHour(datePickerPlugin.pickedHour);
+          timePick.setCurrentMinute(datePickerPlugin.pickedMinute);
+					timePick.setOnTimeChangedListener(datePickerPlugin);
 
 			    nowButton.setOnClickListener(new View.OnClickListener() {
 			        @Override
 			        public void onClick(View v) {
-			            dialog.dismiss();
+		            dialog.dismiss();
+								callbackContext.success("now");
 			        }
 			    });
 
 			    okButton.setOnClickListener(new View.OnClickListener() {
 			        @Override
 			        public void onClick(View v) {
-			            dialog.dismiss();
+								Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
+								calendar.set(Calendar.HOUR_OF_DAY, datePickerPlugin.pickedHour);
+								calendar.set(Calendar.MINUTE, datePickerPlugin.pickedMinute);
+								calendar.set(Calendar.DAY_OF_MONTH, datePickerPlugin.pickedDay);
+            		calendar.set(Calendar.YEAR, datePickerPlugin.pickedYear);
+            		calendar.set(Calendar.MONTH, datePickerPlugin.pickedMonth);
+
+								Log.v("DATETIME", "" + pickedYear + "/" + pickedMonth + "/" + pickedDay + " " + pickedHour + ":" + pickedMinute);
+
+		            dialog.dismiss();
+
+								callbackContext.success("" + calendar.getTime().getTime());
 			        }
 			    });
 
 			    cancelButton.setOnClickListener(new View.OnClickListener() {
 			        @Override
 			        public void onClick(View v) {
-			            dialog.dismiss();
+		            dialog.dismiss();
+								callbackContext.success("cancel");
 			        }
 			    });
 
-			    timePicker.setIs24HourView(true);
 			    dialog.show();
 				}
 			};
