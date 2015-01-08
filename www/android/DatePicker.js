@@ -33,6 +33,7 @@ DatePicker.prototype.show = function(options, cb) {
 
 	var defaults = {
 		mode : 'date',
+		tz: null,
 		date : '',
 		minDate: 0,
 		maxDate: 0

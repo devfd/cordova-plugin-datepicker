@@ -220,12 +220,18 @@
   BOOL allowFutureDates = ([[options objectForKey:@"allowFutureDates"] intValue] == 0) ? NO : YES;
   NSString *minDateString = [options objectForKey:@"minDate"];
   NSString *maxDateString = [options objectForKey:@"maxDate"];
+  NSString *timeZone = [options objectForKey:@"tz"];
+    
+    if (timeZone) {
+        self.datePicker.timeZone = [NSTimeZone timeZoneWithName:timeZone];
+    }
 
   if (!allowOldDates) {
     self.datePicker.minimumDate = [NSDate date];
   }
 
   self.datePicker.minuteInterval = 5;
+  
   
   if(minDateString && minDateString.length > 0){
     self.datePicker.minimumDate = [formatter dateFromString:minDateString];
