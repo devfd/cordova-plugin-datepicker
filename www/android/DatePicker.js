@@ -36,7 +36,8 @@ DatePicker.prototype.show = function(options, cb) {
 		tz: null,
 		date : '',
 		minDate: 0,
-		maxDate: 0
+		maxDate: 0,
+    hideNowButton: false,
 	};
 
 	for (var key in defaults) {

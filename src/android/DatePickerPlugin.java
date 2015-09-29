@@ -203,6 +203,8 @@ public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedList
 		long minDateLong = 0, maxDateLong = 0;
 
 		int month = -1, day = -1, year = -1, hour = -1, min = -1;
+		boolean hideNowButton = false;
+
 		try {
 			JSONObject obj = data.getJSONObject(0);
 			action = obj.getString("mode");
@@ -219,6 +221,8 @@ public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedList
 			minDateLong = obj.getLong("minDate");
 			maxDateLong = obj.getLong("maxDate");
 
+			hideNowButton = obj.getBoolean("hideNowButton");
+
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -229,6 +233,7 @@ public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedList
 		final int mDay = day == -1 ? c.get(Calendar.DAY_OF_MONTH) : day;
 		final int mHour = hour == -1 ? c.get(Calendar.HOUR_OF_DAY) : hour;
 		final int mMinutes = min == -1 ? c.get(Calendar.MINUTE) : min;
+		final boolean nowButtonHidden = hideNowButton;
 
 		this.pickedDay = mDay;
 		this.pickedHour = mHour;
@@ -394,6 +399,10 @@ public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedList
           dialog.setCanceledOnTouchOutside(false);
 
 			    Button nowButton =(Button)layout.findViewById(activityRes.getIdentifier("nowButton", "id", pkgName));
+			    if (nowButtonHidden) {
+			    	nowButton.setVisibility(View.GONE);
+			    }
+
 			    Button okButton = (Button)layout.findViewById(activityRes.getIdentifier("okButton", "id", pkgName));
 			    Button cancelButton = (Button) layout.findViewById(activityRes.getIdentifier("cancelButton", "id", pkgName));
 

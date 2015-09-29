@@ -186,7 +186,7 @@
                action:@selector(nowAction:)
      forControlEvents:UIControlEventTouchUpInside];
   [self updateNowButton:options];
-    
+
   [datePickerView addSubview:self.nowButton];
   [datePickerView addSubview:self.datePicker];
 
@@ -221,7 +221,7 @@
   NSString *minDateString = [options objectForKey:@"minDate"];
   NSString *maxDateString = [options objectForKey:@"maxDate"];
   NSString *timeZone = [options objectForKey:@"tz"];
-    
+
     if (timeZone) {
         self.datePicker.timeZone = [NSTimeZone timeZoneWithName:timeZone];
     }
@@ -231,8 +231,8 @@
   }
 
   self.datePicker.minuteInterval = 5;
-  
-  
+
+
   if(minDateString && minDateString.length > 0){
     self.datePicker.minimumDate = [formatter dateFromString:minDateString];
   }
@@ -293,6 +293,8 @@
     NSString *tintColorHex = [options objectForKey:@"nowButtonColor"];
     [self.nowButton setTintColor: [self colorFromHexString: tintColorHex]];
 
+    BOOL hide = [[options objectForKey:@"hideNowButton"] boolValue];
+    self.nowButton.hidden = hide;
 }
 
 

@@ -59,6 +59,7 @@ DatePicker.prototype.show = function(options, cb) {
     var defaults = {
         mode: 'date',
         tz: null,
+        hideNowButton: false,
         date: new Date(),
         allowOldDates: true,
         allowFutureDates: true,
