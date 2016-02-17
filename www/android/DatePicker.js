@@ -32,12 +32,14 @@ DatePicker.prototype.show = function(options, cb) {
   }
 
 	var defaults = {
-		mode : 'date',
+		mode : 'datetime',
 		tz: null,
 		date : '',
 		minDate: 0,
 		maxDate: 0,
     hideNowButton: false,
+    is24Hour: true,
+    androidTheme: 5
 	};
 
 	for (var key in defaults) {

@@ -2,15 +2,24 @@
  * @author Bikas Vaibhav (http://bikasv.com) 2013
  * Rewrote the plug-in at https://github.com/phonegap/phonegap-plugins/tree/master/Android/DatePicker
  * It can now accept `min` and `max` dates for DatePicker.
+ *
+ * @author Andre Moraes (https://github.com/andrelsmoraes)
+ * Refactored code, changed default mode to show date and time dialog.
+ * Added options `okText`, `cancelText`, `todayText`, `nowText`, `is24Hour`.
+ *
+ * @author Diego Silva (https://github.com/diego-silva)
+ * Added option `titleText`.
  */
 
 package com.plugin.datepicker;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.TimeZone;
+import java.util.Random;
 
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -18,118 +27,34 @@ import org.json.JSONObject;
 import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
 import android.app.DatePickerDialog.OnDateSetListener;
-import android.app.Dialog;
 import android.app.TimePickerDialog;
 import android.app.TimePickerDialog.OnTimeSetListener;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.os.Build;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.widget.DatePicker;
 import android.widget.DatePicker.OnDateChangedListener;
 import android.widget.TimePicker;
 
-import android.app.Activity;
-import android.content.res.Resources;
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-
-import org.apache.cordova.CordovaWebView;
-import org.apache.cordova.CallbackContext;
-import org.apache.cordova.CordovaPlugin;
-
-import android.os.Build;
-
-@SuppressWarnings("deprecation")
 @SuppressLint("NewApi")
-public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedListener, TimePicker.OnTimeChangedListener {
+public class DatePickerPlugin extends CordovaPlugin {
 
 	private static final String ACTION_DATE = "date";
 	private static final String ACTION_TIME = "time";
+	private static final String RESULT_ERROR = "error";
+	private static final String RESULT_CANCEL = "cancel";
 	private final String pluginName = "DatePickerPlugin";
 
-	private int pickedYear = -1;
-  private int pickedMonth = -1;
-  private int pickedDay = -1;
-  private int pickedHour = -1;
-  private int pickedMinute = -1;
-
-	private Date maxDate = null;
-	private Calendar maxDateCal = null;
-	private Date minDate = null;
-	private Calendar minDateCal = null;
-
-	private TimePicker timePickerView = null;
-	private DatePicker datePickerView = null;
-
-	private void pickersToMax() {
-		int pHour = this.maxDateCal.get(Calendar.HOUR_OF_DAY);
-		int pMinute = this.maxDateCal.get(Calendar.MINUTE);
-		int pDay = this.maxDateCal.get(Calendar.DAY_OF_MONTH);
-		int pYear = this.maxDateCal.get(Calendar.YEAR);
-		int pMonth = this.maxDateCal.get(Calendar.MONTH);
-
-		this.datePickerView.init(pYear, pMonth, pDay, this);
-		this.timePickerView.setOnTimeChangedListener(null);
-		this.timePickerView.setCurrentHour(pHour);
-		this.timePickerView.setCurrentMinute(pMinute);
-		this.timePickerView.setOnTimeChangedListener(this);
-
-		this.pickedYear = pYear;
-		this.pickedMonth = pMonth;
-		this.pickedDay = pDay;
-		this.pickedHour = pHour;
-		this.pickedMinute = pMinute;
-	}
-
-	private void pickersToMin() {
-		int pHour = this.minDateCal.get(Calendar.HOUR_OF_DAY);
-		int pMinute = this.minDateCal.get(Calendar.MINUTE);
-		int pDay = this.minDateCal.get(Calendar.DAY_OF_MONTH);
-		int pYear = this.minDateCal.get(Calendar.YEAR);
-		int pMonth = this.minDateCal.get(Calendar.MONTH);
-
-		this.datePickerView.init(pYear, pMonth, pDay, this);
-		this.timePickerView.setOnTimeChangedListener(null);
-		this.timePickerView.setCurrentHour(pHour);
-		this.timePickerView.setCurrentMinute(pMinute);
-		this.timePickerView.setOnTimeChangedListener(this);
-
-		this.pickedYear = pYear;
-		this.pickedMonth = pMonth;
-		this.pickedDay = pDay;
-		this.pickedHour = pHour;
-		this.pickedMinute = pMinute;
-	}
-
-	private Date pickedToDate() {
-		Calendar calDate = Calendar.getInstance(TimeZone.getDefault());
-		calDate.set(Calendar.HOUR_OF_DAY, this.pickedHour);
-		calDate.set(Calendar.MINUTE, this.pickedMinute);
-		calDate.set(Calendar.DAY_OF_MONTH, this.pickedDay);
-		calDate.set(Calendar.YEAR, this.pickedYear);
-		calDate.set(Calendar.MONTH, this.pickedMonth);
-
-		return calDate.getTime();
-	}
-
-	private void dateToPicked(Date date) {
-		Calendar cal = Calendar.getInstance(TimeZone.getDefault());
-		cal.setTime(date);
-		this.pickedHour = cal.get(Calendar.HOUR_OF_DAY);
-		this.pickedMinute = cal.get(Calendar.MINUTE);
-		this.pickedDay = cal.get(Calendar.DAY_OF_MONTH);
-		this.pickedYear = cal.get(Calendar.YEAR);
-		this.pickedMonth = cal.get(Calendar.MONTH);
-	}
+	// On some devices, onDateSet or onTimeSet are being called twice
+	private boolean called = false;
+	private boolean canceled = false;
 
 	@Override
 	public boolean execute(final String action, final JSONArray data, final CallbackContext callbackContext) {
 		Log.d(pluginName, "DatePicker called with options: " + data);
+		called = false;
+		canceled = false;
 		boolean result = false;
 
 		this.show(data, callbackContext);
@@ -138,354 +63,251 @@ public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedList
 		return result;
 	}
 
-	@Override
-  public void onDateChanged(android.widget.DatePicker datePicker, int y, int m, int d) {
-		Calendar calDate = Calendar.getInstance(TimeZone.getDefault());
-		calDate.set(Calendar.HOUR_OF_DAY, this.pickedHour);
-		calDate.set(Calendar.MINUTE, this.pickedMinute);
-		calDate.set(Calendar.DAY_OF_MONTH, d);
-		calDate.set(Calendar.YEAR, y);
-		calDate.set(Calendar.MONTH, m);
-
-		if(this.maxDate != null && calDate.getTime().after(this.maxDate)) {
-			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
-			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
-			this.pickersToMax();
-			return;
-		}
-
-		if(this.minDate != null && calDate.getTime().before(this.minDate)) {
-			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
-			// datePicker.updateDate(this.pickedYear, this.pickedMonth, this.pickedDay);
-			this.pickersToMin();
-			return;
-		}
-
-    this.pickedYear = y;
-    this.pickedMonth = m;
-    this.pickedDay = d;
-  }
-
-  @Override
-  public void onTimeChanged(TimePicker timePicker, int h, int m) {
-		Calendar calDate = Calendar.getInstance(TimeZone.getDefault());
-		calDate.set(Calendar.HOUR_OF_DAY, h);
-		calDate.set(Calendar.MINUTE, m);
-		calDate.set(Calendar.DAY_OF_MONTH, this.pickedDay);
-		calDate.set(Calendar.YEAR, this.pickedYear);
-		calDate.set(Calendar.MONTH, this.pickedMonth);
-
-		if(this.maxDate != null && calDate.getTime().after(this.maxDate)) {
-			// timePicker.setCurrentHour(this.pickedHour);
-			// timePicker.setCurrentMinute(this.pickedMinute);
-			this.pickersToMax();
-			return;
-		}
-
-		if(this.minDate != null && calDate.getTime().before(this.minDate)) {
-			// timePicker.setCurrentHour(this.pickedHour);
-			// timePicker.setCurrentMinute(this.pickedMinute);
-			this.pickersToMin();
-			return;
-		}
-
-		this.pickedHour = h;
-		this.pickedMinute = m;
-  }
-
 	public synchronized void show(final JSONArray data, final CallbackContext callbackContext) {
-		final DatePickerPlugin datePickerPlugin = this;
-		final Activity currentCtx = cordova.getActivity();
-		final Calendar c = Calendar.getInstance();
-		final Runnable runnable;
+		DatePickerPlugin datePickerPlugin = this;
+		Context currentCtx = cordova.getActivity();
+		Runnable runnable;
+		JsonDate jsonDate = new JsonDate().fromJson(data);
 
-		String action = "date";
-		long minDateLong = 0, maxDateLong = 0;
+    // Retrieve Android theme
+    JSONObject options = data.optJSONObject(0);
+    int theme = options.optInt("androidTheme", 1);
 
-		int month = -1, day = -1, year = -1, hour = -1, min = -1;
-		boolean hideNowButton = false;
-
-		try {
-			JSONObject obj = data.getJSONObject(0);
-			action = obj.getString("mode");
-
-			String optionDate = obj.getString("date");
-
-			String[] datePart = optionDate.split("/");
-			month = Integer.parseInt(datePart[0]);
-			day = Integer.parseInt(datePart[1]);
-			year = Integer.parseInt(datePart[2]);
-			hour = Integer.parseInt(datePart[3]);
-			min = Integer.parseInt(datePart[4]);
-
-			minDateLong = obj.getLong("minDate");
-			maxDateLong = obj.getLong("maxDate");
-
-			hideNowButton = obj.getBoolean("hideNowButton");
-
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-
-		// By default initalize these fields to 'now'
-		final int mYear = year == -1 ? c.get(Calendar.YEAR) : year;
-		final int mMonth = month == -1 ? c.get(Calendar.MONTH) : month - 1;
-		final int mDay = day == -1 ? c.get(Calendar.DAY_OF_MONTH) : day;
-		final int mHour = hour == -1 ? c.get(Calendar.HOUR_OF_DAY) : hour;
-		final int mMinutes = min == -1 ? c.get(Calendar.MINUTE) : min;
-		final boolean nowButtonHidden = hideNowButton;
-
-		this.pickedDay = mDay;
-		this.pickedHour = mHour;
-		this.pickedMinute = mMinutes;
-		this.pickedMonth = mMonth;
-		this.pickedYear = mYear;
-
-		final long minDate = minDateLong;
-		final long maxDate = maxDateLong;
-
-		if(minDate != 0) {
-			this.minDate = new Date(minDate);
-			this.minDateCal = Calendar.getInstance(TimeZone.getDefault());
-			this.minDateCal.setTime(this.minDate);
-			Log.v("MIN DATE", this.minDate.toString());
-
-			if(this.pickedToDate().before(this.minDate)) {
-				this.dateToPicked(this.minDate);
-			}
-		}
-
-		if(maxDate != 0) {
-			this.maxDate = new Date(maxDate);
-			this.maxDateCal = Calendar.getInstance(TimeZone.getDefault());
-			this.maxDateCal.setTime(this.maxDate);
-			Log.v("MAX DATE", this.maxDate.toString());
-		}
-
-		Log.v("PICKED", "" + this.pickedHour + ":" + this.pickedMinute);
-
-		if (ACTION_TIME.equalsIgnoreCase(action)) {
-			runnable = new Runnable() {
-				@Override
-				public void run() {
-					final TimeSetListener timeSetListener = new TimeSetListener(datePickerPlugin, callbackContext);
-					final TimePickerDialog timeDialog = new TimePickerDialog(currentCtx, timeSetListener, mHour,
-							mMinutes, true);
-					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-						timeDialog.setCancelable(true);
-						timeDialog.setCanceledOnTouchOutside(false);
-						timeDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								callbackContext.success("cancel");
-							}
-						});
-						timeDialog.setOnKeyListener(new Dialog.OnKeyListener() {
-							@Override
-							public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-								// TODO Auto-generated method stub
-								//callbackContext.success("");
-								return false;
-							}
-						});
-					}
-					timeDialog.show();
-				}
-			};
-
-		} else if (ACTION_DATE.equalsIgnoreCase(action)) {
-			runnable = new Runnable() {
-				@Override
-				public void run() {
-					final DateSetListener dateSetListener = new DateSetListener(datePickerPlugin, callbackContext);
-					final DatePickerDialog dateDialog = new DatePickerDialog(currentCtx, dateSetListener, mYear,
-							mMonth, mDay);
-					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-						DatePicker dp = dateDialog.getDatePicker();
-						if(minDate > 0) {
-							dp.setMinDate(minDate);
-						}
-						if(maxDate > 0 && maxDate > minDate) {
-							dp.setMaxDate(maxDate);
-						}
-
-						dateDialog.setCancelable(true);
-						dateDialog.setCanceledOnTouchOutside(false);
-						dateDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-				            @Override
-				            public void onClick(DialogInterface dialog, int which) {
-								callbackContext.success("cancel");
-				            }
-				        });
-						dateDialog.setOnKeyListener(new Dialog.OnKeyListener() {
-							@Override
-							public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-								// TODO Auto-generated method stub
-								//callbackContext.success("");
-								return false;
-							}
-						});
-					}
-					else {
-						java.lang.reflect.Field mDatePickerField = null;
-						try {
-							mDatePickerField = dateDialog.getClass().getDeclaredField("mDatePicker");
-						} catch (NoSuchFieldException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						mDatePickerField.setAccessible(true);
-						DatePicker pickerView = null;
-						try {
-							pickerView = (DatePicker) mDatePickerField.get(dateDialog);
-						} catch (IllegalArgumentException e) {
-							e.printStackTrace();
-						} catch (IllegalAccessException e) {
-							e.printStackTrace();
-						}
-
-						final Calendar startDate = Calendar.getInstance();
-						startDate.setTimeInMillis(minDate);
-						final Calendar endDate = Calendar.getInstance();
-						endDate.setTimeInMillis(maxDate);
-
-						final int minYear = startDate.get(Calendar.YEAR);
-					    final int minMonth = startDate.get(Calendar.MONTH);
-					    final int minDay = startDate.get(Calendar.DAY_OF_MONTH);
-					    final int maxYear = endDate.get(Calendar.YEAR);
-					    final int maxMonth = endDate.get(Calendar.MONTH);
-					    final int maxDay = endDate.get(Calendar.DAY_OF_MONTH);
-
-						if(startDate !=null || endDate != null) {
-							pickerView.init(mYear, mMonth, mDay, new OnDateChangedListener() {
-				                @Override
-								public void onDateChanged(DatePicker view, int year, int month, int day) {
-				                	if(maxDate > 0 && maxDate > minDate) {
-					                	if(year > maxYear || month > maxMonth && year == maxYear || day > maxDay && year == maxYear && month == maxMonth){
-					                		view.updateDate(maxYear, maxMonth, maxDay);
-					                	}
-				                	}
-				                	if(minDate > 0) {
-					                	if(year < minYear || month < minMonth && year == minYear || day < minDay && year == minYear && month == minMonth) {
-					                		view.updateDate(minYear, minMonth, minDay);
-					                	}
-				                	}
-			                	}
-				            });
-						}
-					}
-					dateDialog.show();
-				}
-			};
+		if (ACTION_TIME.equalsIgnoreCase(jsonDate.action)) {
+			runnable = runnableTimeDialog(datePickerPlugin, theme, currentCtx,
+					callbackContext, jsonDate, Calendar.getInstance(TimeZone.getDefault()));
 
 		} else {
-			runnable = new Runnable() {
-				@Override
-				public void run() {
-					Resources activityRes = currentCtx.getResources();
-			    String pkgName = currentCtx.getPackageName();
-
-			    LayoutInflater inflater = (LayoutInflater)
-			            currentCtx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-
-			    View layout = inflater.inflate(activityRes.getIdentifier("datetime", "layout", pkgName),
-			            (ViewGroup) currentCtx.findViewById(activityRes.getIdentifier("linearLayout2", "id", pkgName)));
-
-			    final AlertDialog.Builder builder = new AlertDialog.Builder(currentCtx);
-			    builder.setView(layout);
-
-			    final AlertDialog dialog = builder.create();
-					dialog.setCancelable(true);
-          dialog.setCanceledOnTouchOutside(false);
-
-			    Button nowButton =(Button)layout.findViewById(activityRes.getIdentifier("nowButton", "id", pkgName));
-			    if (nowButtonHidden) {
-			    	nowButton.setVisibility(View.GONE);
-			    }
-
-			    Button okButton = (Button)layout.findViewById(activityRes.getIdentifier("okButton", "id", pkgName));
-			    Button cancelButton = (Button) layout.findViewById(activityRes.getIdentifier("cancelButton", "id", pkgName));
-
-			    DatePicker datePick = (DatePicker) layout.findViewById(activityRes.getIdentifier("datePicker", "id", pkgName));
-					datePick.init(datePickerPlugin.pickedYear, datePickerPlugin.pickedMonth, datePickerPlugin.pickedDay, datePickerPlugin);
-					datePickerPlugin.datePickerView = datePick;
-
-			    TimePicker timePick = (TimePicker) layout.findViewById(activityRes.getIdentifier("timePicker", "id", pkgName));
-					datePickerPlugin.timePickerView = timePick;
-
-					timePick.setIs24HourView(true);
-					timePick.setCurrentHour(datePickerPlugin.pickedHour);
-          timePick.setCurrentMinute(datePickerPlugin.pickedMinute);
-					timePick.setOnTimeChangedListener(datePickerPlugin);
-
-			    nowButton.setOnClickListener(new View.OnClickListener() {
-			        @Override
-			        public void onClick(View v) {
-		            dialog.dismiss();
-								callbackContext.success("now");
-			        }
-			    });
-
-			    okButton.setOnClickListener(new View.OnClickListener() {
-			        @Override
-			        public void onClick(View v) {
-								Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
-								calendar.set(Calendar.HOUR_OF_DAY, datePickerPlugin.pickedHour);
-								calendar.set(Calendar.MINUTE, datePickerPlugin.pickedMinute);
-								calendar.set(Calendar.DAY_OF_MONTH, datePickerPlugin.pickedDay);
-            		calendar.set(Calendar.YEAR, datePickerPlugin.pickedYear);
-            		calendar.set(Calendar.MONTH, datePickerPlugin.pickedMonth);
-
-								Log.v("DATETIME", "" + pickedYear + "/" + pickedMonth + "/" + pickedDay + " " + pickedHour + ":" + pickedMinute);
-
-		            dialog.dismiss();
-
-								callbackContext.success("" + calendar.getTime().getTime());
-			        }
-			    });
-
-			    cancelButton.setOnClickListener(new View.OnClickListener() {
-			        @Override
-			        public void onClick(View v) {
-		            dialog.dismiss();
-								callbackContext.success("cancel");
-			        }
-			    });
-
-			    dialog.show();
-				}
-			};
+			runnable = runnableDatePicker(datePickerPlugin, theme, currentCtx, callbackContext, jsonDate);
 		}
 
 		cordova.getActivity().runOnUiThread(runnable);
 	}
 
+	private TimePicker timePicker;
+	private int timePickerHour = 0;
+	private int timePickerMinute = 0;
+
+	private Runnable runnableTimeDialog(final DatePickerPlugin datePickerPlugin,
+			final int theme, final Context currentCtx, final CallbackContext callbackContext,
+			final JsonDate jsonDate, final Calendar calendarDate) {
+		return new Runnable() {
+			@Override
+			public void run() {
+				final TimeSetListener timeSetListener = new TimeSetListener(datePickerPlugin, callbackContext, calendarDate);
+				final TimePickerDialog timeDialog = new TimePickerDialog(currentCtx, theme, timeSetListener, jsonDate.hour,
+						jsonDate.minutes, jsonDate.is24Hour) {
+					public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
+						timePicker = view;
+						timePickerHour = hourOfDay;
+						timePickerMinute = minute;
+					}
+				};
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					timeDialog.setCancelable(true);
+					timeDialog.setCanceledOnTouchOutside(false);
+
+					if (!jsonDate.titleText.isEmpty()){
+						timeDialog.setTitle(jsonDate.titleText);
+					}
+					if (!jsonDate.nowText.isEmpty()){
+						timeDialog.setButton(DialogInterface.BUTTON_NEUTRAL, jsonDate.nowText, new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								if (timePicker != null) {
+									Calendar now = Calendar.getInstance();
+									timeSetListener.onTimeSet(timePicker, now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE));
+								}
+							}
+						});
+			        }
+					String labelCancel = jsonDate.cancelText.isEmpty() ? currentCtx.getString(android.R.string.cancel) : jsonDate.cancelText;
+					timeDialog.setButton(DialogInterface.BUTTON_NEGATIVE, labelCancel, new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							canceled = true;
+							callbackContext.error(RESULT_CANCEL);
+						}
+					});
+					String labelOk = jsonDate.okText.isEmpty() ? currentCtx.getString(android.R.string.ok) : jsonDate.okText;
+					timeDialog.setButton(DialogInterface.BUTTON_POSITIVE, labelOk, timeDialog);
+				}
+				timeDialog.show();
+				timeDialog.updateTime(new Random().nextInt(23), new Random().nextInt(59));
+				timeDialog.updateTime(jsonDate.hour, jsonDate.minutes);
+			}
+		};
+	}
+
+	private Runnable runnableDatePicker(
+			final DatePickerPlugin datePickerPlugin,
+			final int theme, final Context currentCtx,
+			final CallbackContext callbackContext, final JsonDate jsonDate) {
+		return new Runnable() {
+			@Override
+			public void run() {
+				final DateSetListener dateSetListener = new DateSetListener(datePickerPlugin, theme, callbackContext, jsonDate);
+				final DatePickerDialog dateDialog = new DatePickerDialog(currentCtx, theme, dateSetListener, jsonDate.year,
+						jsonDate.month, jsonDate.day);
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					prepareDialog(dateDialog, dateSetListener, callbackContext, currentCtx, jsonDate);
+				}
+				else {
+					prepareDialogPreHoneycomb(dateDialog, callbackContext, currentCtx, jsonDate);
+				}
+
+				dateDialog.show();
+			}
+		};
+	}
+
+	private void prepareDialog(final DatePickerDialog dateDialog, final OnDateSetListener dateListener,
+			final CallbackContext callbackContext, Context currentCtx, JsonDate jsonDate) {
+		dateDialog.setCancelable(true);
+		dateDialog.setCanceledOnTouchOutside(false);
+		if (!jsonDate.titleText.isEmpty()){
+			dateDialog.setTitle(jsonDate.titleText);
+		}
+		if (!jsonDate.todayText.isEmpty()){
+            dateDialog.setButton(DialogInterface.BUTTON_NEUTRAL, jsonDate.todayText, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                	Calendar now = Calendar.getInstance();
+                	DatePicker datePicker = dateDialog.getDatePicker();
+					dateListener.onDateSet(datePicker, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH));
+                }
+            });
+        }
+		String labelCancel = jsonDate.cancelText.isEmpty() ? currentCtx.getString(android.R.string.cancel) : jsonDate.cancelText;
+		dateDialog.setButton(DialogInterface.BUTTON_NEGATIVE, labelCancel, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+				canceled = true;
+				callbackContext.error(RESULT_CANCEL);
+            }
+        });
+		String labelOk = jsonDate.okText.isEmpty() ? currentCtx.getString(android.R.string.ok) : jsonDate.okText;
+		dateDialog.setButton(DialogInterface.BUTTON_POSITIVE, labelOk, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+				DatePicker datePicker = dateDialog.getDatePicker();
+				datePicker.clearFocus();
+				dateListener.onDateSet(datePicker, datePicker.getYear(), datePicker.getMonth(), datePicker.getDayOfMonth());
+            }
+        });
+
+        DatePicker dp = dateDialog.getDatePicker();
+		if(jsonDate.minDate > 0) {
+			dp.setMinDate(jsonDate.minDate);
+		}
+		if(jsonDate.maxDate > 0 && jsonDate.maxDate > jsonDate.minDate) {
+			dp.setMaxDate(jsonDate.maxDate);
+		}
+	}
+
+	private void prepareDialogPreHoneycomb(DatePickerDialog dateDialog,
+			final CallbackContext callbackContext, Context currentCtx, final JsonDate jsonDate){
+		java.lang.reflect.Field mDatePickerField = null;
+		try {
+			mDatePickerField = dateDialog.getClass().getDeclaredField("mDatePicker");
+		} catch (NoSuchFieldException e) {
+			callbackContext.error(RESULT_ERROR);
+		}
+		mDatePickerField.setAccessible(true);
+		DatePicker pickerView = null;
+		try {
+			pickerView = (DatePicker) mDatePickerField.get(dateDialog);
+		} catch (IllegalArgumentException e) {
+			callbackContext.error(RESULT_ERROR);
+		} catch (IllegalAccessException e) {
+			callbackContext.error(RESULT_ERROR);
+		}
+
+		final Calendar startDate = Calendar.getInstance();
+		startDate.setTimeInMillis(jsonDate.minDate);
+		final Calendar endDate = Calendar.getInstance();
+		endDate.setTimeInMillis(jsonDate.maxDate);
+
+		final int minYear = startDate.get(Calendar.YEAR);
+	    final int minMonth = startDate.get(Calendar.MONTH);
+	    final int minDay = startDate.get(Calendar.DAY_OF_MONTH);
+	    final int maxYear = endDate.get(Calendar.YEAR);
+	    final int maxMonth = endDate.get(Calendar.MONTH);
+	    final int maxDay = endDate.get(Calendar.DAY_OF_MONTH);
+
+		if(startDate !=null || endDate != null) {
+			pickerView.init(jsonDate.year, jsonDate.month, jsonDate.day, new OnDateChangedListener() {
+                @Override
+				public void onDateChanged(DatePicker view, int year, int month, int day) {
+                	if(jsonDate.maxDate > 0 && jsonDate.maxDate > jsonDate.minDate) {
+	                	if(year > maxYear || month > maxMonth && year == maxYear || day > maxDay && year == maxYear && month == maxMonth){
+	                		view.updateDate(maxYear, maxMonth, maxDay);
+	                	}
+                	}
+                	if(jsonDate.minDate > 0) {
+	                	if(year < minYear || month < minMonth && year == minYear || day < minDay && year == minYear && month == minMonth) {
+	                		view.updateDate(minYear, minMonth, minDay);
+	                	}
+                	}
+            	}
+            });
+		}
+	}
+
 	private final class DateSetListener implements OnDateSetListener {
+		private JsonDate jsonDate;
 		private final DatePickerPlugin datePickerPlugin;
 		private final CallbackContext callbackContext;
+		private final int theme;
 
-		private DateSetListener(DatePickerPlugin datePickerPlugin, CallbackContext callbackContext) {
+		private DateSetListener(DatePickerPlugin datePickerPlugin, int theme, CallbackContext callbackContext, JsonDate jsonDate) {
 			this.datePickerPlugin = datePickerPlugin;
 			this.callbackContext = callbackContext;
+			this.jsonDate = jsonDate;
+      this.theme = theme;
 		}
 
 		/**
-		 * Return a string containing the date in the format YYYY/MM/DD
+		 * Return a string containing the date in the format YYYY/MM/DD or call TimeDialog if action != date
 		 */
 		@Override
 		public void onDateSet(final DatePicker view, final int year, final int monthOfYear, final int dayOfMonth) {
-			String returnDate = year + "/" + (monthOfYear + 1) + "/" + dayOfMonth;
-			callbackContext.success(returnDate);
+			if (canceled || called) {
+				return;
+			}
+			called = true;
+			canceled = false;
+
+			Log.d("onDateSet", "called: " + called);
+			Log.d("onDateSet", "canceled: " + canceled);
+			Log.d("onDateSet", "mode: " + jsonDate.action);
+
+			if (ACTION_DATE.equalsIgnoreCase(jsonDate.action)) {
+				String returnDate = year + "/" + (monthOfYear + 1) + "/" + dayOfMonth;
+				Log.d("onDateSet", "returnDate: " + returnDate);
+
+				callbackContext.success(returnDate);
+
+			} else {
+				// Open time dialog
+				Calendar selectedDate = Calendar.getInstance();
+				selectedDate.set(Calendar.YEAR, year);
+				selectedDate.set(Calendar.MONTH, monthOfYear);
+				selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+				cordova.getActivity().runOnUiThread(runnableTimeDialog(datePickerPlugin, theme, cordova.getActivity(),
+						callbackContext, jsonDate, selectedDate));
+			}
 		}
 	}
 
 	private final class TimeSetListener implements OnTimeSetListener {
-		private final DatePickerPlugin datePickerPlugin;
+		private Calendar calendarDate;
 		private final CallbackContext callbackContext;
 
-		private TimeSetListener(DatePickerPlugin datePickerPlugin, CallbackContext callbackContext) {
-			this.datePickerPlugin = datePickerPlugin;
+		private TimeSetListener(DatePickerPlugin datePickerPlugin, CallbackContext callbackContext, Calendar selectedDate) {
 			this.callbackContext = callbackContext;
+			this.calendarDate = selectedDate != null ? selectedDate : Calendar.getInstance();
 		}
 
 		/**
@@ -494,16 +316,96 @@ public class DatePickerPlugin extends CordovaPlugin implements OnDateChangedList
 		 */
 		@Override
 		public void onTimeSet(final TimePicker view, final int hourOfDay, final int minute) {
-			Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
-			calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-			calendar.set(Calendar.MINUTE, minute);
+			if (canceled) {
+				return;
+			}
+
+			calendarDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
+			calendarDate.set(Calendar.MINUTE, minute);
+			calendarDate.set(Calendar.SECOND, 0);
 
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 			sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-			String toReturn = sdf.format(calendar.getTime());
+			String toReturn = sdf.format(calendarDate.getTime());
 
 			callbackContext.success(toReturn);
 		}
+	}
+
+	private final class JsonDate {
+
+		private String action = ACTION_DATE;
+		private String titleText = "";
+		private String okText = "";
+		private String cancelText = "";
+		private String todayText = "";
+		private String nowText = "";
+		private long minDate = 0;
+		private long maxDate = 0;
+		private int month = 0;
+		private int day = 0;
+		private int year = 0;
+		private int hour = 0;
+		private int minutes = 0;
+		private boolean is24Hour = false;
+
+		public JsonDate() {
+			reset(Calendar.getInstance());
+		}
+
+		private void reset(Calendar c) {
+			year = c.get(Calendar.YEAR);
+			month = c.get(Calendar.MONTH);
+			day = c.get(Calendar.DAY_OF_MONTH);
+			hour = c.get(Calendar.HOUR_OF_DAY);
+			minutes = c.get(Calendar.MINUTE);
+		}
+
+		public JsonDate fromJson(JSONArray data) {
+			try {
+				JSONObject obj = data.getJSONObject(0);
+				action = isNotEmpty(obj, "mode") ? obj.getString("mode")
+						: ACTION_DATE;
+
+				minDate = isNotEmpty(obj, "minDate") ? obj.getLong("minDate") : 0l;
+				maxDate = isNotEmpty(obj, "maxDate") ? obj.getLong("maxDate") : 0l;
+
+				titleText = isNotEmpty(obj, "titleText") ? obj.getString("titleText") : "";
+				okText = isNotEmpty(obj, "okText") ? obj.getString("okText") : "";
+				cancelText = isNotEmpty(obj, "cancelText") ? obj
+						.getString("cancelText") : "";
+				todayText = isNotEmpty(obj, "todayText") ? obj
+						.getString("todayText") : "";
+				nowText = isNotEmpty(obj, "nowText") ? obj.getString("nowText")
+						: "";
+				is24Hour = isNotEmpty(obj, "is24Hour") ? obj.getBoolean("is24Hour")
+						: false;
+
+				String optionDate = obj.getString("date");
+
+				String[] datePart = optionDate.split("/");
+				month = Integer.parseInt(datePart[0]) - 1;
+				day = Integer.parseInt(datePart[1]);
+				year = Integer.parseInt(datePart[2]);
+				hour = Integer.parseInt(datePart[3]);
+				minutes = Integer.parseInt(datePart[4]);
+
+			} catch (JSONException e) {
+				reset(Calendar.getInstance());
+			}
+
+			return this;
+		}
+
+		public boolean isNotEmpty(JSONObject object, String key)
+				throws JSONException {
+			return object.has(key)
+					&& !object.isNull(key)
+					&& object.get(key).toString().length() > 0
+					&& !JSONObject.NULL.toString().equals(
+							object.get(key).toString());
+		}
+
 	}
 
 }
