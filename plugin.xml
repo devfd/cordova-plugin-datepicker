@@ -14,9 +14,6 @@
 
     <!-- android -->
     <platform name="android">
-        <hook type="after_plugin_install" src="hooks/after_plugin_install.js" />
-        <hook type="before_plugin_uninstall" src="hooks/before_plugin_uninstall.js" />
-
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="DatePickerPlugin">
                 <param name="android-package" value="com.plugin.datepicker.DatePickerPlugin"/>
