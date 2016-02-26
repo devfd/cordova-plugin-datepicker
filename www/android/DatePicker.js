@@ -1,4 +1,3 @@
-cordova.define("com.plugin.datepicker.DatePicker", function(require, exports, module) {
 /**
  * Phonegap DatePicker Plugin Copyright (c) Greg Allen 2011 MIT Licensed
  * Reused and ported to Android plugin by Daniel van 't Oever
@@ -89,5 +88,3 @@ if (!window.plugins) {
 if (!window.plugins.datePicker) {
     window.plugins.datePicker = datePicker;
 }
-
-});
