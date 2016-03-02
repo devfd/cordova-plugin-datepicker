@@ -272,6 +272,7 @@
 
   NSString *tintColorHex = [options objectForKey:@"cancelButtonColor"];
   self.cancelButton.tintColor = [self colorFromHexString: tintColorHex];
+        [self.cancelButton.titleLabel setFont:[UIFont systemFontOfSize:19]];
 
 }
 
@@ -282,6 +283,8 @@
 
   NSString *tintColorHex = [options objectForKey:@"doneButtonColor"];
   [self.doneButton setTintColor: [self colorFromHexString: tintColorHex]];
+
+    [self.doneButton.titleLabel setFont:[UIFont systemFontOfSize:19]];
 
 }
 
@@ -295,6 +298,8 @@
 
     BOOL hide = [[options objectForKey:@"hideNowButton"] boolValue];
     self.nowButton.hidden = hide;
+
+   [self.nowButton.titleLabel setFont:[UIFont systemFontOfSize:18]];
 }
 
 
