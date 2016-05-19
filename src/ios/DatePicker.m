@@ -23,7 +23,6 @@
 @property (nonatomic) IBOutlet UIView* datePickerComponentsContainer;
 @property (nonatomic) IBOutlet UIButton *cancelButton;
 @property (nonatomic) IBOutlet UIButton *doneButton;
-@property (nonatomic) IBOutlet UIButton *nowButton;
 @property (nonatomic) IBOutlet UIDatePicker *datePicker;
 
 @end
@@ -33,10 +32,12 @@
 #define isIPhone (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)
 #define ANIMATION_DURATION 0.3
 
+NSMutableDictionary *options;
+
 #pragma mark - UIDatePicker
 
 - (void)show:(CDVInvokedUrlCommand*)command {
-  NSMutableDictionary *options = [command argumentAtIndex:0];
+  options = [command argumentAtIndex:0];
   if (isIPhone) {
     [self showForPhone: options];
   } else {
@@ -52,7 +53,8 @@
   [self updateDatePicker:options];
   [self updateCancelButton:options];
   [self updateDoneButton:options];
-  [self updateNowButton:options];
+
+    [self.datePicker addTarget:self action:@selector(dateChangedActionOnPhone:) forControlEvents:UIControlEventValueChanged];
 
   UIDeviceOrientation deviceOrientation = [UIDevice currentDevice].orientation;
 
@@ -142,6 +144,26 @@
   [self jsDateSelected:@""];
 }
 
+- (void)dateChangedActionOnPhone:(id)sender {
+    NSDate* currentdate = [NSDate date];
+    NSTimeInterval distanceBetweenDates = [self.datePicker.date timeIntervalSinceDate:currentdate];
+
+    if (distanceBetweenDates < 5 * 60) {
+        NSString *label = @"Maintenant";
+        if (options != nil) {
+            label = [options objectForKey:@"nowButtonLabel"];
+        }
+        [self.doneButton setTitle:label forState: UIControlStateNormal];
+    }
+    else {
+        NSString *label = @"Ok";
+        if (options != nil) {
+            label = [options objectForKey:@"doneButtonLabel"];
+        }
+        [self.doneButton setTitle: @"Ok" forState: UIControlStateNormal];
+    }
+}
+
 #pragma mark - JS API
 
 - (void)jsDateSelected:(NSString*) mode {
@@ -180,14 +202,6 @@
   }
   [self updateDatePicker:options];
 
-  self.nowButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-  self.nowButton.frame = CGRectMake(0, 10, pickerViewWidth, 30.0);
-  [self.nowButton addTarget:self
-               action:@selector(nowAction:)
-     forControlEvents:UIControlEventTouchUpInside];
-  [self updateNowButton:options];
-
-  [datePickerView addSubview:self.nowButton];
   [datePickerView addSubview:self.datePicker];
 
   UIViewController *datePickerViewController = [[UIViewController alloc]init];
@@ -286,22 +300,9 @@
 
     [self.doneButton.titleLabel setFont:[UIFont systemFontOfSize:19]];
 
+    [self dateChangedActionOnPhone:self.doneButton];
+
 }
-
-- (void)updateNowButton:(NSMutableDictionary *)options {
-
-    NSString *label = [options objectForKey:@"nowButtonLabel"];
-    [self.nowButton setTitle:label forState:UIControlStateNormal];
-
-    NSString *tintColorHex = [options objectForKey:@"nowButtonColor"];
-    [self.nowButton setTintColor: [self colorFromHexString: tintColorHex]];
-
-    BOOL hide = [[options objectForKey:@"hideNowButton"] boolValue];
-    self.nowButton.hidden = hide;
-
-   [self.nowButton.titleLabel setFont:[UIFont systemFontOfSize:18]];
-}
-
 
 #pragma mark - Utilities
 
